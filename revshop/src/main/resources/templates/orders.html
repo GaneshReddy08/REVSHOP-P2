@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      th:replace="~{fragments/layout :: main-layout(~{::section})}">
+<body>
+    <section>
+        <div class="hero" style="border-radius: 0; padding: 2.5rem 2rem;">
+            <h1>Checkout & Orders</h1>
+            <p>Place a new order or view your order history.</p>
+        </div>
+
+        <div class="orders-container">
+            <!-- Checkout Section -->
+            <div class="checkout-card" id="checkoutSection">
+                <h2>📦 Place Order</h2>
+                <form id="checkoutForm">
+                    <div class="form-group">
+                        <label>Shipping Address</label>
+                        <textarea id="shippingAddress" required placeholder="Enter your full shipping address"
+                            style="width:100%; padding:0.8rem; border-radius:10px; border:1px solid #e2e8f0; min-height:80px; font-family:inherit; font-size:1rem;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Payment Method</label>
+                        <select id="paymentMethod" required style="width:100%; padding:0.8rem; border-radius:10px; border:1px solid #e2e8f0; font-size:1rem;">
+                            <option value="COD">Cash on Delivery</option>
+                            <option value="UPI">UPI</option>
+                            <option value="CREDIT_CARD">Credit Card</option>
+                            <option value="DEBIT_CARD">Debit Card</option>
+                            <option value="NET_BANKING">Net Banking</option>
+                        </select>
+                    </div>
+                    <div id="paymentTip" style="padding:0.75rem 1rem; border-radius:8px; font-size:0.875rem; margin-bottom:1rem; display:none;"></div>
+                    <button type="submit" class="btn-checkout" style="width:100%;">Place Order</button>
+                </form>
+                <div id="checkoutMsg" style="margin-top:1rem;"></div>
+            </div>
+
+            <!-- Order History -->
+            <h2 style="font-family:'Outfit',sans-serif; margin-bottom:1.5rem;">Order History</h2>
+            <div id="ordersList">
+                <div class="empty-state">
+                    <h3>Loading orders...</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Review Modal -->
+        <div id="reviewModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1001; align-items:center; justify-content:center;">
+            <div class="checkout-card" style="width:100%; max-width:500px; margin:1rem; position:relative;">
+                <button onclick="closeReviewModal()" style="position:absolute; top:1rem; right:1rem; background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-muted);">&times;</button>
+                <h3 id="modalTitle" style="margin-bottom:1rem; font-family:'Outfit',sans-serif;">Review Product</h3>
+                <p id="modalProductName" style="color:var(--text-muted); margin-bottom:1.5rem; font-weight:600;"></p>
+                
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem;" id="starRating">
+                    <span class="star" onclick="setRating(1)" i="1" style="cursor:pointer; font-size: 1.5rem; color: #e2e8f0;">⭐</span>
+                    <span class="star" onclick="setRating(2)" i="2" style="cursor:pointer; font-size: 1.5rem; color: #e2e8f0;">⭐</span>
+                    <span class="star" onclick="setRating(3)" i="3" style="cursor:pointer; font-size: 1.5rem; color: #e2e8f0;">⭐</span>
+                    <span class="star" onclick="setRating(4)" i="4" style="cursor:pointer; font-size: 1.5rem; color: #e2e8f0;">⭐</span>
+                    <span class="star" onclick="setRating(5)" i="5" style="cursor:pointer; font-size: 1.5rem; color: #e2e8f0;">⭐</span>
+                </div>
+                
+ 		`		<textarea id="reviewComment" placeholder="Write your thoughts..."
+                    style="width:100%; min-height:100px; padding:0.75rem; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:1.5rem; font-family:inherit; resize:vertical;"></textarea>
+                                
+                <div id="reviewActions" style="display: flex; gap: 1rem;">
+                    <button id="submitReviewBtn" onclick="submitReview()" class="btn-checkout" style="flex:2;">Submit Review</button>
+                    <button id="deleteReviewBtn" onclick="deleteReview()" class="btn-auth" style="flex:1; background:#ef4444; margin:0; display:none;">Delete</button>
+                </div>
+            </div>
+        </div>
+
+        <script th:inline="none">
+            var currentProductId = null;
+            var currentRating    = 0;
+            var isEditing        = false;
+
+            document.getElementById('paymentMethod').addEventListener('change', function() {
+                const tip = document.getElementById('paymentTip');
+                const val = this.value;
+                if (val === 'COD') {
+                    tip.style.display    = 'block';
+                    tip.style.background = '#fef9c3';
+                    tip.style.color      = '#92400e';
+                    tip.innerHTML        = '💵 <strong>Cash on Delivery:</strong> Pay when the order arrives. The seller will accept and ship after placement.';
+                } else {
+                    tip.style.display    = 'block';
+                    tip.style.background = '#eff6ff';
+                    tip.style.color      = '#1e40af';
+                    tip.innerHTML        = '💳 <strong>' + val.replace('_', ' ') + ':</strong> The seller will verify your payment before shipping. You will be notified once confirmed.';
+                }
+            });
+
+            document.getElementById('checkoutForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                var msg = document.getElementById('checkoutMsg');
+                msg.innerHTML = '<p style="color:var(--text-muted)">Placing order...</p>';
+                try {
+                    var res = await fetch('/api/orders/place', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            shippingAddress: document.getElementById('shippingAddress').value,
+                            paymentMethod:   document.getElementById('paymentMethod').value
+                        })
+                    });
+                    if (res.ok) {
+                        var order = await res.json();
+                        var payNote = document.getElementById('paymentMethod').value === 'COD'
+                            ? ' Pay on delivery.' : ' Waiting for seller to confirm your payment.';
+                        msg.innerHTML = '<div class="success-msg">Order #' + order.orderId + ' placed successfully! 🎉' + payNote + '</div>';
+                        document.getElementById('checkoutForm').reset();
+                        document.getElementById('paymentTip').style.display = 'none';
+                        loadOrders();
+                        if (typeof updateCartCount === 'function') updateCartCount();
+                    } else {
+                        var err = await res.text();
+                        msg.innerHTML = '<div class="error-msg">' + err + '</div>';
+                    }
+                } catch (err) {
+                    msg.innerHTML = '<div class="error-msg">Failed to place order: ' + err.message + '</div>';
+                }
+            });
+
+            async function loadOrders() {
+                var container = document.getElementById('ordersList');
+                try {
+                    var res = await fetch('/api/orders/my-orders');
+                    if (!res.ok) throw new Error('Failed to load orders');
+                    var orders = await res.json();
+
+                    if (orders.length === 0) {
+                        container.innerHTML = '<div class="empty-state"><h3>No orders yet</h3><p>Place your first order above!</p></div>';
+                        return;
+                    }
+
+                    container.innerHTML = orders.map(function(order) {
+                        var statusClass   = (order.status || 'pending').toLowerCase();
+                        var paymentMethod = (order.paymentMethod || 'COD').toUpperCase();
+                        var paymentStatus = (order.paymentStatus || '').toUpperCase();
+                        var isCOD         = paymentMethod === 'COD';
+
+                        var psColor = paymentStatus === 'COMPLETED'             ? '#16a34a'
+                                    : paymentStatus === 'FAILED'                ? '#dc2626'
+                                    : paymentStatus === 'AWAITING_CONFIRMATION' ? '#2563eb'
+                                    : '#f59e0b';
+                        var psLabel = isCOD && paymentStatus !== 'COMPLETED' ? 'Pay on Delivery' : (paymentStatus || 'PENDING');
+
+                        var paymentBadgeHtml =
+                            '<span style="background:#f1f5f9; border:1px solid #e2e8f0; color:#475569; padding:0.15rem 0.5rem; border-radius:20px; font-size:0.75rem; font-weight:500; margin-right:0.3rem;">' + paymentMethod.replace('_', ' ') + '</span>' +
+                            '<span style="background:' + psColor + '18; border:1px solid ' + psColor + '44; color:' + psColor + '; padding:0.15rem 0.5rem; border-radius:20px; font-size:0.75rem; font-weight:600;">' + psLabel + '</span>';
+
+                        var itemsList = (order.items || []).map(function(item) {
+                            var itemSubTotal = item.subTotal || (item.priceAtPurchase * item.quantity) || 0;
+                            var reviewBtn = order.status === 'DELIVERED' ?
+                                '<button class="tab-btn" onclick="openReviewModal(' + item.productId + ', \'' + item.productName.replace(/'/g, "\\'") + '\')" style="padding:0.2rem 0.6rem; font-size:0.75rem; border-color:var(--primary-color); color:var(--primary-color);">Rate/Review</button>' : '';
+                            return '<li style="flex-direction:column; gap:0.5rem; align-items:stretch;">' +
+                                '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+                                    '<span><strong>' + item.productName + '</strong> × ' + item.quantity + '</span>' +
+                                    '<span>₹' + itemSubTotal.toFixed(2) + '</span>' +
+                                '</div>' +
+                                (reviewBtn ? '<div style="display:flex; justify-content:flex-end;">' + reviewBtn + '</div>' : '') +
+                            '</li>';
+                        }).join('');
+
+                        return '<div class="order-card">' +
+                            '<div class="order-header">' +
+                                '<h3>Order #' + order.orderId + '</h3>' +
+                                '<div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">' +
+                                    paymentBadgeHtml +
+                                    (order.status === 'PENDING' || order.status === 'ACCEPTED' ?
+                                        '<button class="tab-btn" onclick="cancelOrder(' + order.orderId + ')" style="padding:0.2rem 0.6rem; font-size:0.75rem; color:#ef4444; border-color:#ef4444;">Cancel</button>' : '') +
+                                    '<span class="status-badge ' + statusClass + '">' + order.status + '</span>' +
+                                '</div>' +
+                            '</div>' +
+                            '<ul class="order-items">' + itemsList + '</ul>' +
+                            '<div class="order-total">Total: ₹' + order.totalAmount.toFixed(2) + '</div>' +
+                            '<div style="font-size:0.8rem; color:var(--text-muted); margin-top:0.5rem;">' + new Date(order.orderDate).toLocaleString() + '</div>' +
+                            (!isCOD && order.status === 'PENDING' ?
+                                '<div style="margin-top:0.75rem; padding:0.6rem 0.85rem; background:#eff6ff; border-radius:8px; font-size:0.82rem; color:#1e40af;">' +
+                                '⏳ Waiting for seller to confirm your <strong>' + paymentMethod.replace('_', ' ') + '</strong> payment.</div>' : '') +
+                        '</div>';
+                    }).join('');
+                } catch (err) {
+                    container.innerHTML = '<div class="empty-state"><h3>Could not load orders</h3><p>' + err.message + '</p></div>';
+                }
+            }
+
+            async function cancelOrder(orderId) {
+                if (!confirm('Are you sure you want to cancel this order?')) return;
+                try {
+                    var res = await fetch('/api/orders/' + orderId + '/cancel', { method: 'PATCH' });
+                    if (res.ok) { loadOrders(); }
+                    else { var err = await res.text(); alert('Could not cancel order: ' + err); }
+                } catch (err) { alert('Request failed: ' + err.message); }
+            }
+
+            async function openReviewModal(productId, productName) {
+                currentProductId = productId;
+                document.getElementById('modalProductName').textContent = productName;
+                document.getElementById('reviewModal').style.display = 'flex';
+                try {
+                    var res = await fetch('/api/reviews/status/' + productId);
+                    var s = await res.json();
+                    if (s.hasReviewed) {
+                        isEditing = true;
+                        document.getElementById('modalTitle').textContent        = 'Update Review';
+                        document.getElementById('submitReviewBtn').textContent   = 'Update Review';
+                        document.getElementById('deleteReviewBtn').style.display = 'block';
+                        document.getElementById('reviewComment').value           = s.review.commentText;
+                        setRating(s.review.rating);
+                    } else {
+                        isEditing = false;
+                        document.getElementById('modalTitle').textContent        = 'Rate & Review';
+                        document.getElementById('submitReviewBtn').textContent   = 'Submit Review';
+                        document.getElementById('deleteReviewBtn').style.display = 'none';
+                        document.getElementById('reviewComment').value           = '';
+                        setRating(0);
+                    }
+                } catch (err) { console.error('Failed to fetch review status', err); }
+            }
+
+            function closeReviewModal() {
+                document.getElementById('reviewModal').style.display = 'none';
+                currentProductId = null;
+            }
+
+            function setRating(r) {
+                currentRating = r;
+                document.querySelectorAll('#starRating .star').forEach(function(star) {
+                    star.style.opacity = parseInt(star.getAttribute('i')) <= r ? '1' : '0.3';
+                });
+            }
+
+            async function submitReview() {
+                if (currentRating === 0) return alert('Please select a rating');
+                var comment = document.getElementById('reviewComment').value;
+                try {
+                    var res = await fetch(isEditing ? '/api/reviews/update' : '/api/reviews/add', {
+                        method: isEditing ? 'PUT' : 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ productId: currentProductId, rating: currentRating, comment })
+                    });
+                    if (res.ok) { alert(isEditing ? '✅ Review updated!' : '✅ Review added!'); closeReviewModal(); }
+                    else { var err = await res.text(); alert('Error: ' + err); }
+                } catch (err) { alert('Request failed'); }
+            }
+
+            async function deleteReview() {
+                if (!confirm('Are you sure you want to delete your review?')) return;
+                try {
+                    var res = await fetch('/api/reviews/delete/' + currentProductId, { method: 'DELETE' });
+                    if (res.ok) { alert('🗑️ Review deleted'); closeReviewModal(); }
+                } catch (err) { alert('Failed to delete review'); }
+            }
+
+            loadOrders();
+        </script>
+    </section>
+</body>
+</html>

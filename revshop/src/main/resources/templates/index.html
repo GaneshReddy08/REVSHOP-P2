@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      th:replace="~{fragments/layout :: main-layout(~{::section})}">
+<body>
+    <section>
+        <div class="hero">
+            <h1>Upgrade Your Lifestyle</h1>
+            <p>Discover the best deals on premium products, only at RevShop.</p>
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="Search for products..." onkeydown="if(event.key==='Enter') searchProducts()">
+                <button onclick="searchProducts()">Search</button>
+            </div>
+        </div>
+
+        <!-- Category Filter -->
+        <div class="category-bar" id="categoryBar">
+            <button class="category-pill active" onclick="filterByCategory(null, this)">All</button>
+            <!-- Categories loaded via JS -->
+        </div>
+
+        <div class="container">
+            <h2 id="sectionTitle" style="margin-bottom: 2rem; font-weight: 700; font-family: 'Outfit', sans-serif;">Featured Products</h2>
+            <div class="product-grid" id="productGrid">
+                <!-- Products loaded via JS -->
+            </div>
+            
+            <input type="hidden" id="currentUserId" th:value="${session.userId != null ? session.userId : ''}">
+            
+            <div id="noResults" style="display:none; text-align:center; padding:3rem; color:var(--text-muted);">
+                <h3 style="font-family:'Outfit',sans-serif; margin-bottom:0.5rem;">No products found</h3>
+                <p>Try a different search or category.</p>
+            </div>
+        </div>
+
+        <script th:inline="none">
+            let allProducts = [];
+            let categories = [];
+            let activeCategoryId = null;
+
+            let favoritedIds = new Set();
+
+            async function loadCategories() {
+                try {
+                    const res = await fetch('/api/categories');
+                    categories = await res.json();
+                    const bar = document.getElementById('categoryBar');
+                    categories.forEach(c => {
+                        const btn = document.createElement('button');
+                        btn.className = 'category-pill';
+                        btn.textContent = c.name;
+                        btn.onclick = function() { filterByCategory(c.categoryId, this); };
+                        bar.appendChild(btn);
+                    });
+                } catch (e) {
+                    console.warn('Could not load categories', e);
+                }
+            }
+            
+            async function loadFavorites() {
+                try {
+                    const res = await fetch('/api/favorites/mine');
+                    if (res.ok) {
+                        const favs = await res.json();
+                        favoritedIds = new Set(favs.map(f => f.product ? f.product.productId : f.productId));
+                    }
+                } catch (e) { /* not logged in, ignore */ }
+            }
+
+            async function loadProducts() {
+                try {
+                    const res = await fetch('/api/products');
+                    allProducts = await res.json();
+                    renderProducts(allProducts);
+                } catch (e) {
+                    console.warn('Could not load products', e);
+                }
+            }
+            
+            function renderStars(rating) {
+                if (!rating || rating === 0) return '';
+                const full = Math.floor(rating);
+                const half = rating - full >= 0.5;
+                let stars = '';
+                for (let i = 0; i < full; i++) stars += '★';
+                if (half) stars += '½';
+                return stars;
+            }
+            
+            function renderRatingRow(p) {
+                const hasRating = p.averageRating && p.averageRating > 0;
+                const reviewCount = (p.reviewCount != null) ? p.reviewCount : 0;
+
+                if (!hasRating) return '<div class="product-rating" style="color:#cbd5e1; font-size:0.8rem;">No reviews yet</div>';
+
+                return '<div class="product-rating" style="display:flex; align-items:center; gap:5px; margin-bottom:0.4rem;">' +
+                    '<span style="color:#f59e0b; font-size:0.95rem; font-weight:700;">★' + p.averageRating.toFixed(1) + '</span>' +
+                    '<span style="color:#64748b; font-size:0.82rem;">/5</span>' +
+                    '<span style="color:#94a3b8; font-size:0.78rem; margin-left:2px;">(' + reviewCount + ' ' + (reviewCount === 1 ? 'rating' : 'ratings') + ')</span>' +
+                '</div>';
+            }
+
+            function renderPriceRow(p) {
+                const hasMrp = p.mrp && p.mrp > p.price;
+                const discountPct = hasMrp ? Math.round((1 - p.price / p.mrp) * 100) : 0;
+
+                return `<div style="margin-bottom:0.5rem;">
+                    ${hasMrp ? `
+                        <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
+                            <span class="product-mrp">₹${p.mrp.toFixed(2)}</span>
+                            <span style="background:#dcfce7; color:#16a34a; font-size:0.72rem; font-weight:700;
+                                         padding:2px 7px; border-radius:20px; letter-spacing:0.3px;">
+                                ${discountPct}% OFF
+                            </span>
+                        </div>` : ''}
+                    <span class="product-price">₹${p.price.toFixed(2)}</span>
+                </div>`;
+            }
+            
+            function renderProducts(products) {
+                const grid = document.getElementById('productGrid');
+                const noResults = document.getElementById('noResults');
+                if (products.length === 0) {
+                    grid.innerHTML = '';
+                    noResults.style.display = 'block';
+                    return;
+                }
+                noResults.style.display = 'none';
+
+                grid.innerHTML = products.map(function(p) {
+                    var imgSrc = (p.primaryImageUrl &&
+                                  p.primaryImageUrl !== 'default-placeholder.png' &&
+                                  p.primaryImageUrl !== '')
+                        ? p.primaryImageUrl
+                        : 'https://via.placeholder.com/300x200?text=No+Image';
+
+                    var isFav = favoritedIds.has(p.productId) || p.favorited;
+
+                    var currentUserId = document.getElementById('currentUserId').value;
+                    var isOwner = (currentUserId && p.sellerId == currentUserId);
+
+                    var heartBtn = isOwner ? '' : '<button class="heart-btn ' + (isFav ? 'favorited' : '') + '" onclick="toggleFavorite(' + p.productId + ', this)">' +
+                        '<svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>' +
+                    '</button>';
+
+                    var actionBtn = isOwner
+                        ? '<a href="/seller/dashboard" class="btn-add-cart" style="text-align:center; text-decoration:none; background:#64748b;">Manage Product</a>'
+                        : '<button class="btn-add-cart" onclick="addToCart(' + p.productId + ')">Add to Cart</button>';
+
+                    return '<div class="product-card">' +
+                        '<a href="/product/' + p.productId + '" style="text-decoration:none; color:inherit;">' +
+                            '<img src="' + imgSrc + '" class="product-image" alt="' + p.name + '" ' +
+                                 'onerror="this.src=\'https://via.placeholder.com/300x200?text=No+Image\'">' +
+                        '</a>' +
+                        '<div class="product-info">' +
+                            '<div style="display:flex; justify-content:space-between; align-items:flex-start;">' +
+                                renderRatingRow(p) +
+                                heartBtn +
+                            '</div>' +
+                            '<a href="/product/' + p.productId + '" style="text-decoration:none; color:inherit;">' +
+                                '<h3 class="product-name">' + p.name + '</h3>' +
+                            '</a>' +
+                            '<p class="product-desc">' + (p.description || '') + '</p>' +
+                            '<div class="product-footer">' +
+                                renderPriceRow(p) +
+                                actionBtn +
+                            '</div>' +
+                        '</div>' +
+                    '</div>';
+                }).join('');
+            }
+
+            function filterByCategory(categoryId, btn) {
+                document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
+                btn.classList.add('active');
+                activeCategoryId = categoryId;
+
+                const title = document.getElementById('sectionTitle');
+                if (categoryId === null) {
+                    title.textContent = 'Featured Products';
+                    renderProducts(allProducts);
+                } else {
+                    const cat = categories.find(c => c.categoryId === categoryId);
+                    title.textContent = cat ? cat.name : 'Products';
+                    renderProducts(allProducts.filter(p => p.categoryName === (cat ? cat.name : '')));
+                }
+            }
+
+            async function searchProducts() {
+                const q = document.getElementById('searchInput').value.trim();
+                const title = document.getElementById('sectionTitle');
+                if (!q) {
+                    title.textContent = 'Featured Products';
+                    renderProducts(allProducts);
+                    return;
+                }
+                title.textContent = 'Search Results for "' + q + '"';
+                document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
+                document.querySelector('.category-pill').classList.add('active');
+                activeCategoryId = null;
+
+                try {
+                    const res = await fetch('/api/products/search?q=' + encodeURIComponent(q));
+                    const results = await res.json();
+                    renderProducts(results);
+                } catch (e) {
+                    console.warn('Search failed', e);
+                }
+            }
+            
+            async function toggleFavorite(productId, btn) {
+                try {
+                    const res = await fetch('/api/favorites/toggle/' + productId, { method: 'POST' });
+                    const data = await res.json();
+                    if (res.ok) {
+                        btn.classList.toggle('favorited', data.isFavorited);
+                        if (data.isFavorited) favoritedIds.add(productId);
+                        else favoritedIds.delete(productId);
+                    } else {
+                        alert(data.message || 'Please login to favorite products.');
+                    }
+                } catch (e) {
+                    alert('Could not update favorite.');
+                }
+            }
+
+            async function addToCart(productId) {
+                try {
+                    const res = await fetch('/api/cart/add?productId=' + productId + '&quantity=1', { method: 'POST' });
+                    if (res.ok) {
+                        const countEl = document.getElementById('cart-count');
+                        if (countEl) countEl.textContent = parseInt(countEl.textContent || '0') + 1;
+                        // brief visual feedback on the button
+                        const btn = event.target;
+                        const original = btn.textContent;
+                        btn.textContent = '✓ Added';
+                        btn.style.background = '#16a34a';
+                        setTimeout(() => {
+                            btn.textContent = original;
+                            btn.style.background = '';
+                        }, 1200);
+                    } else if (res.status === 401 || res.status === 403) {
+                        window.location.href = '/login';
+                    } else {
+                        const err = await res.json().catch(() => ({}));
+                        alert(err.message || 'Could not add to cart.');
+                    }
+                } catch (e) {
+                    alert('Could not add to cart.');
+                }
+            }
+
+            // Load everything in parallel
+            Promise.all([loadCategories(), loadFavorites(), loadProducts()]);
+
+           
+        </script>
+    </section>
+</body>
+</html>

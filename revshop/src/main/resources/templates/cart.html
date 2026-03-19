@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      th:replace="~{fragments/layout :: main-layout(~{::section})}">
+<body>
+    <section>
+        <div class="hero" style="border-radius: 0; padding: 2.5rem 2rem;">
+            <h1>Your Cart</h1>
+            <p>Review your items before checkout.</p>
+        </div>
+
+        <div class="cart-container">
+            <!-- Cart content loaded via JS -->
+            <div id="cartContent"></div>
+        </div>
+
+        <script th:inline="none">
+            async function loadCart() {
+                const container = document.getElementById('cartContent');
+                try {
+                    const res = await fetch('/api/cart/user/0');
+                    if (!res.ok) throw new Error('Failed to load cart');
+                    const cart = await res.json();
+
+                    if (!cart.items || cart.items.length === 0) {
+                        container.innerHTML = '<div class="cart-empty">' +
+                            '<h2>Your cart is empty</h2>' +
+                            '<p>Browse our products and add something you love!</p>' +
+                            '<a href="/" class="btn-checkout" style="display:inline-block; margin-top:1.5rem; text-decoration:none;">Browse Products</a>' +
+                            '</div>';
+                        return;
+                    }
+
+                    let rows = cart.items.map(function(item) {
+                        return '<tr>' +
+                            '<td style="font-weight:600;">' + item.productName + '</td>' +
+                            '<td>₹' + item.price.toFixed(2) + '</td>' +
+                            '<td><div class="qty-controls">' +
+                                '<button class="qty-btn" onclick="updateQty(' + item.cartItemId + ', ' + (item.quantity - 1) + ')">−</button>' +
+                                '<span style="font-weight:600; min-width:24px; text-align:center;">' + item.quantity + '</span>' +
+                                '<button class="qty-btn" onclick="updateQty(' + item.cartItemId + ', ' + (item.quantity + 1) + ')">+</button>' +
+                            '</div></td>' +
+                            '<td style="font-weight:600;">₹' + item.subTotal.toFixed(2) + '</td>' +
+                            '<td><button class="btn-remove" onclick="removeItem(' + item.cartItemId + ')">Remove</button></td>' +
+                            '</tr>';
+                    }).join('');
+
+                    container.innerHTML = '<table class="cart-table"><thead><tr>' +
+                        '<th>Product</th><th>Price</th><th>Quantity</th><th>Subtotal</th><th></th>' +
+                        '</tr></thead><tbody>' + rows + '</tbody></table>' +
+                        '<div class="cart-summary">' +
+                        '<div class="cart-total">Total: <span>₹' + cart.totalAmount.toFixed(2) + '</span></div>' +
+                        '<a href="/orders" class="btn-checkout" style="text-decoration:none;">Proceed to Checkout</a>' +
+                        '</div>';
+                } catch (err) {
+                    container.innerHTML = '<div class="cart-empty"><h2>Could not load cart</h2><p>' + err.message + '</p></div>';
+                }
+            }
+
+            async function updateQty(cartItemId, newQty) {
+                if (newQty < 1) { removeItem(cartItemId); return; }
+                await fetch('/api/cart/item/' + cartItemId + '?quantity=' + newQty, { method: 'PATCH' });
+                loadCart();
+                if (typeof updateCartCount === 'function') updateCartCount();
+            }
+
+            async function removeItem(cartItemId) {
+                await fetch('/api/cart/item/' + cartItemId, { method: 'DELETE' });
+                loadCart();
+                if (typeof updateCartCount === 'function') updateCartCount();
+            }
+
+            loadCart();
+        </script>
+    </section>
+</body>
+</html>

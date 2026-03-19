@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      th:replace="~{fragments/layout :: main-layout(~{::section})}">
+<body>
+    <section>
+        <div class="hero" style="border-radius: 0; padding: 3rem 2rem;">
+            <h1>Seller Dashboard</h1>
+            <p th:text="'Welcome back, ' + ${session.userName}"></p>
+        </div>
+
+        <div class="container" style="max-width: 1400px;">
+            <input type="hidden" id="currentSellerId" th:value="${session.userId}">
+            
+            <!-- Summary Stats -->
+            <div class="dashboard-grid">
+                <div class="stat-card">
+                    <h3>Total Revenue</h3>
+                    <div class="value" id="totalRevenue">₹0.00</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Items Sold</h3>
+                    <div class="value" id="totalItemsSold">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Active Products</h3>
+                    <div class="value" id="activeProducts">0</div>
+                </div>
+            </div>
+
+            <!-- Tabs Navigation -->
+            <div class="dashboard-tabs">
+                <button class="tab-btn active" onclick="switchTab(event, 'products')">My Products</button>
+                <button class="tab-btn" onclick="switchTab(event, 'orders')">Recent Orders</button>
+                <!--<button class="tab-btn" onclick="switchTab(event, 'notifications')">Notifications</button>
+                <button class="tab-btn" onclick="switchTab(event, 'account')">Account</button>  -->
+            </div>
+
+            <!-- Products Tab -->
+            <div id="products-tab" class="tab-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2 style="font-family: 'Outfit', sans-serif;">Inventory Management</h2>
+                    <button class="tab-btn active" onclick="openProductModal()" style="padding: 0.8rem 1.5rem;">+ Add New Product</button>
+                </div>
+                <table class="dashboard-table">
+                    <thead>
+                        <tr>
+                            <th>Product Name</th>
+                            <th>Category</th>
+                            <th>Price</th>
+                            <th>Stock</th>
+                            <th>Rating</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsList">
+                        <!-- Loaded via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Orders Tab -->
+            <div id="orders-tab" class="tab-content" style="display: none;">
+                <h2 style="margin-bottom: 1.5rem; font-family: 'Outfit', sans-serif;">Manage Orders</h2>
+                <table class="dashboard-table">
+                    <thead>
+                        <tr>
+                            <th>Order Item ID</th>
+                            <th>Product</th>
+                            <th>Quantity</th>
+                            <th>Price</th>
+                            <th>Payment</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ordersList">
+                        <!-- Loaded via JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Notifications Tab -->
+            <!--<div id="notifications-tab" class="tab-content" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h2 style="font-family: 'Outfit', sans-serif;">Recent Notifications</h2>
+                    <button class="tab-btn" onclick="clearAllNotifications()" style="font-size: 0.9rem;">Mark All as Read</button>
+                </div>
+                <div id="notificationsList">
+                </div>
+            </div>-->
+        </div>
+        
+        <!-- Account Tab (Change Password) 
+            <div id="account-tab" class="tab-content" style="display: none;">
+                <div style="max-width: 480px; margin: 0 auto;">
+                    <h2 style="font-family: 'Outfit', sans-serif; margin-bottom: 1.5rem;">Change Password</h2>
+                    <div id="cpMsg" style="display:none; padding:0.8rem 1rem; border-radius:8px; margin-bottom:1rem; font-size:0.95rem;"></div>
+                    <div class="form-group">
+                        <label>Current Password</label>
+                        <div style="position:relative;">
+                            <input type="password" id="cpOld" placeholder="Enter current password"
+                                   style="width:100%; padding:0.8rem 2.8rem 0.8rem 0.8rem; border-radius:8px; border:1px solid #e2e8f0;">
+                            <span onclick="togglePwd('cpOld', this)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer; color:#64748b; font-size:0.85rem; user-select:none;">👁</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <div style="position:relative;">
+                            <input type="password" id="cpNew" placeholder="Enter new password"
+                                   style="width:100%; padding:0.8rem 2.8rem 0.8rem 0.8rem; border-radius:8px; border:1px solid #e2e8f0;">
+                            <span onclick="togglePwd('cpNew', this)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer; color:#64748b; font-size:0.85rem; user-select:none;">👁</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm New Password</label>
+                        <div style="position:relative;">
+                            <input type="password" id="cpConfirm" placeholder="Re-enter new password"
+                                   style="width:100%; padding:0.8rem 2.8rem 0.8rem 0.8rem; border-radius:8px; border:1px solid #e2e8f0;">
+                            <span onclick="togglePwd('cpConfirm', this)" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); cursor:pointer; color:#64748b; font-size:0.85rem; user-select:none;">👁</span>
+                        </div>
+                    </div>
+                    <button class="btn-add-cart" style="width:100%; margin-top:0.5rem;" onclick="changePassword()">Update Password</button>
+                </div>
+            </div>  -->
+        
+
+        <!-- Product Modal -->
+		<div id="productModal" class="modal" style="display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:flex-start; justify-content:center; overflow-y:auto; padding:2rem 0;">
+		    <div class="auth-card" style="width:520px; padding:2rem;">
+		        <h2 id="modalTitle" style="margin-bottom:1.5rem;">Add Product</h2>
+		        <div id="prodFormMsg" style="display:none; padding:0.7rem 1rem; border-radius:8px; margin-bottom:1rem; font-size:0.9rem;"></div>
+		        <form id="productForm">
+		            <input type="hidden" id="editProductId">
+		            <div class="form-group">
+		                <label>Name</label>
+		                <input type="text" id="prodName" required placeholder="Product Name">
+		            </div>
+		            <div class="form-group">
+		                <label>Description</label>
+		                <textarea id="prodDesc" required placeholder="Product Description"
+		                          style="width:100%; padding:0.8rem; border-radius:8px; border:1px solid #e2e8f0;"></textarea>
+		            </div>
+		            <div class="form-grid" style="grid-template-columns:1fr 1fr; gap:1rem;">
+		                <div class="form-group">
+		                    <label>Selling Price (₹)</label>
+		                    <input type="number" id="prodPrice" required step="0.01" min="0" oninput="validatePriceVsMrp()">
+		                </div>
+		                <div class="form-group">
+		                    <label>MRP (₹)</label>
+		                    <input type="number" id="prodMrp" required step="0.01" min="0" oninput="validatePriceVsMrp()">
+		                </div>
+		            </div>
+		            <div id="priceError" style="display:none; color:#ef4444; font-size:0.82rem; margin-top:-0.5rem; margin-bottom:0.5rem;">
+		                ⚠ Selling price cannot be greater than MRP.
+		            </div>
+		            <div class="form-grid" style="grid-template-columns:1fr 1fr; gap:1rem;">
+		                <div class="form-group">
+		                    <label>Stock</label>
+		                    <input type="number" id="prodStock" required min="0" oninput="validateStockVsThreshold()">
+		                </div>
+		                <div class="form-group">
+		                    <label>Inventory Threshold</label>
+		                    <input type="number" id="prodThreshold" min="0" placeholder="Low stock alert level" oninput="validateStockVsThreshold()">
+		                </div>
+		            </div>
+		            <div id="stockError" style="display:none; color:#ef4444; font-size:0.82rem; margin-top:-0.5rem; margin-bottom:0.5rem;">
+		                ⚠ Stock must be greater than the inventory threshold.
+		            </div>
+		            <div class="form-group">
+		                <label>Category</label>
+		                <select id="prodCategory" required style="width:100%; padding:0.8rem; border-radius:8px; border:1px solid #e2e8f0;"></select>
+		            </div>
+		
+		            <!-- Image Input — Toggle between Upload and URL -->
+		            <div class="form-group">
+		                <label>Product Image</label>
+		                <div style="display:flex; gap:0; margin-bottom:0.75rem; border:1px solid #e2e8f0; border-radius:8px; overflow:hidden;">
+		                    <button type="button" id="imgTabUpload"
+		                        onclick="switchImgTab('upload')"
+		                        style="flex:1; padding:0.6rem; border:none; background:var(--primary-color); color:#fff; font-weight:600; cursor:pointer; font-size:0.85rem;">
+		                        📁 Upload File
+		                    </button>
+		                    <button type="button" id="imgTabUrl"
+		                        onclick="switchImgTab('url')"
+		                        style="flex:1; padding:0.6rem; border:none; background:#f1f5f9; color:#64748b; font-weight:600; cursor:pointer; font-size:0.85rem;">
+		                        🔗 Image URL
+		                    </button>
+		                </div>
+		
+		                <!-- Upload tab -->
+		                <div id="imgPanelUpload">
+		                    <input type="file" id="prodImages" multiple accept="image/*"
+		                           style="width:100%; padding:0.8rem; border-radius:8px; border:1px solid #e2e8f0;"
+		                           onchange="updateImageCount()">
+		                    <small style="color:var(--text-muted);" id="imageCountMsg">You can select multiple images at once.</small>
+		                </div>
+		
+		                <!-- URL tab -->
+		                <div id="imgPanelUrl" style="display:none;">
+		                    <input type="url" id="prodImageUrl" placeholder="https://example.com/image.jpg"
+		                           style="width:100%; padding:0.8rem; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:0.5rem;"
+		                           oninput="previewImageUrl()">
+		                    <div id="imgUrlPreview" style="display:none; margin-top:0.5rem;">
+		                        <img id="imgUrlPreviewImg" src="" alt="Preview"
+		                             style="width:100%; max-height:160px; object-fit:contain; border-radius:8px; border:1px solid #e2e8f0; background:#f8fafc;">
+		                    </div>
+		                    <small style="color:var(--text-muted);">Paste a direct image link (jpg, png, webp, etc.)</small>
+		                </div>
+		            </div>
+		
+		            <div style="display:flex; gap:1rem; margin-top:1.5rem;">
+		                <button type="submit" class="btn-add-cart" style="flex:1;">Save Product</button>
+		                <button type="button" class="tab-btn" onclick="closeProductModal()" style="flex:1;">Cancel</button>
+		            </div>
+		        </form>
+		    </div>
+		</div>
+
+        <!-- Order Details Modal -->
+        <div id="orderDetailsModal" class="modal" style="display:none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; overflow-y: auto;">
+            <div class="checkout-card" style="width: 700px; padding: 2.5rem; max-height: 90vh; overflow-y: auto;">
+                <h2 style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+                    Order Details <span id="detailOrderId" style="color: var(--text-muted); font-size: 1.1rem;"></span>
+                </h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid #e2e8f0;">
+                    <div>
+                        <h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 0.75rem;">Buyer Info</h3>
+                        <p id="detailBuyerName" style="font-weight: 600; margin-bottom: 0.25rem;"></p>
+                        <p id="detailBuyerEmail" style="color: var(--text-muted); font-size: 0.9rem;"></p>
+                    </div>
+                    <div>
+                        <h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 0.75rem;">Status & Date</h3>
+                        <p id="detailStatus" style="margin-bottom: 0.25rem;"></p>
+                        <p id="detailDate" style="color: var(--text-muted); font-size: 0.9rem;"></p>
+                    </div>
+                </div>
+                
+                <!-- Payment Info -->
+                <div style="margin-bottom:2rem; padding:1rem; background:#f8fafc; border-radius:10px; border:1px solid #e2e8f0;">
+                    <h3 style="font-size:0.9rem; text-transform:uppercase; color:var(--text-muted); letter-spacing:0.05em; margin-bottom:0.5rem;">Payment</h3>
+                    <p id="detailPaymentMethod" style="font-weight:600; margin-bottom:0.25rem;"></p>
+                    <p id="detailPaymentStatus" style="font-size:0.9rem;"></p>
+                </div>
+
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 0.75rem;">Shipping Address</h3>
+                    <p id="detailAddress" style="line-height: 1.6;"></p>
+                </div>
+
+                <div style="margin-bottom: 2rem;">
+                    <h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.05em; margin-bottom: 1rem;">Products</h3>
+                    <table class="dashboard-table" style="box-shadow: none; border: 1px solid #f1f5f9;">
+                        <thead style="background: #f8fafc;">
+                            <tr>
+                                <th>Product Name</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th>Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detailItemsList"></tbody>
+                    </table>
+                </div>
+
+                <div style="text-align: right; margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid #f1f5f9;">
+                    <span style="font-size: 1.25rem; font-weight: 700; color: var(--primary-color);">Total: <span id="detailTotal"></span></span>
+                </div>
+
+                <div style="margin-top: 2.5rem; display: flex; gap: 1rem;">
+                    <button class="tab-btn" onclick="closeOrderModal()" style="flex: 1;">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <script th:inline="none">
+    const sellerId = document.getElementById('currentSellerId').value;
+    let categories = [];
+
+    async function fetchCategories() {
+        const res = await fetch('/api/categories');
+        categories = await res.json();
+        const select = document.getElementById('prodCategory');
+        select.innerHTML = categories.map(function(c) {
+            return '<option value="' + c.categoryId + '">' + c.name + '</option>';
+        }).join('');
+    }
+
+    // ── Frontend validators (real-time inline feedback) ───────────────
+    function validatePriceVsMrp() {
+        const price = parseFloat(document.getElementById('prodPrice').value);
+        const mrp   = parseFloat(document.getElementById('prodMrp').value);
+        const err   = document.getElementById('priceError');
+        if (!isNaN(price) && !isNaN(mrp) && price > mrp) {
+            err.style.display = 'block';
+        } else {
+            err.style.display = 'none';
+        }
+    }
+
+    function showProdMsg(msg, isError) {
+        const el = document.getElementById('prodFormMsg');
+        el.textContent        = msg;
+        el.style.background   = isError ? '#fee2e2' : '#dcfce7';
+        el.style.color        = isError ? '#dc2626' : '#16a34a';
+        el.style.display      = 'block';
+    }
+
+    function validateStockVsThreshold() {
+        const stock     = parseInt(document.getElementById('prodStock').value);
+        const threshold = parseInt(document.getElementById('prodThreshold').value);
+        const err       = document.getElementById('stockError');
+        if (!isNaN(stock) && !isNaN(threshold) && stock <= threshold) {
+            err.style.display = 'block';
+        } else {
+            err.style.display = 'none';
+        }
+    }
+
+    // ── Dashboard data ───────────────────────────────────────────────
+    async function fetchDashboardData() {
+        try {
+            const statsRes = await fetch('/api/seller/' + sellerId + '/stats');
+            if (statsRes.ok) {
+                const stats = await statsRes.json();
+                document.getElementById('totalRevenue').textContent   = '₹' + (stats.totalRevenue || 0).toFixed(2);
+                document.getElementById('totalItemsSold').textContent = stats.totalItemsSold || 0;
+                document.getElementById('activeProducts').textContent = stats.activeProducts || 0;
+            }
+        } catch (err) { console.error('Stats fetch error:', err); }
+
+        // ── Inventory table ───────────────────────────────────────────
+        try {
+            const productsRes = await fetch('/api/seller/' + sellerId + '/inventory');
+            if (productsRes.ok) {
+                const products = await productsRes.json();
+                const productsList = document.getElementById('productsList');
+                productsList.innerHTML = products.map(function(p) {
+
+                    // Stock highlight — use actual threshold, fallback to 5
+                    var threshold  = (p.inventoryThreshold != null) ? p.inventoryThreshold : 5;
+                    var stockClass = p.stock <= threshold ? 'error-msg' : '';
+
+                    // Rating: ★4.5/5 (3 ratings)
+                    var ratingHtml;
+                    if (p.averageRating && p.averageRating > 0) {
+                        var count = (p.reviewCount != null) ? p.reviewCount : 0;
+                        ratingHtml =
+                            '<span style="color:#f59e0b; font-weight:700; font-size:0.95rem;">★' + p.averageRating.toFixed(1) + '</span>' +
+                            '<span style="color:#64748b; font-size:0.85rem;">/5</span>' +
+                            '<span style="color:#94a3b8; font-size:0.78rem; margin-left:3px;">(' + count + ')</span>';
+                    } else {
+                        ratingHtml = '<span style="color:#cbd5e1; font-size:0.82rem;">No reviews</span>';
+                    }
+
+                    // Product image — safe fallback
+                    var imgSrc = (p.primaryImageUrl &&
+                                  p.primaryImageUrl !== 'default-placeholder.png' &&
+                                  p.primaryImageUrl !== '')
+                        ? p.primaryImageUrl
+                        : 'https://via.placeholder.com/48x48?text=N/A';
+
+                    return '<tr>' +
+                        '<td style="font-weight:600;">' +
+                            '<div style="display:flex; align-items:center; gap:10px;">' +
+                                '<img src="' + imgSrc + '" alt="' + p.name + '" ' +
+                                     'style="width:48px; height:48px; object-fit:cover; border-radius:6px; border:1px solid #e2e8f0; flex-shrink:0;" ' +
+                                     'onerror="this.src=\'https://via.placeholder.com/48x48?text=N/A\'">' +
+                                '<span>' + p.name + '</span>' +
+                            '</div>' +
+                        '</td>' +
+                        '<td>' + (p.categoryName || 'Uncategorized') + '</td>' +
+                        '<td>' +
+                            '₹' + p.price.toFixed(2) +
+                            (p.mrp && p.mrp > p.price
+                                ? '<br><span style="text-decoration:line-through; color:#94a3b8; font-size:0.78rem;">₹' + p.mrp.toFixed(2) + '</span>'
+                                : '') +
+                        '</td>' +
+                        '<td class="' + stockClass + '">' +
+                            p.stock +
+                            (p.inventoryThreshold != null
+                                ? '<br><span style="font-size:0.75rem; color:#94a3b8;">threshold: ' + p.inventoryThreshold + '</span>'
+                                : '') +
+                        '</td>' +
+                        '<td>' + ratingHtml + '</td>' +
+                        '<td>' +
+                            '<button class="tab-btn" onclick=\'openProductModal(' + JSON.stringify(p).replace(/'/g, "\\'") + ')\' style="padding:0.3rem 0.8rem; font-size:0.8rem;">Edit</button> ' +
+                            '<button class="tab-btn" onclick="deleteProduct(' + p.productId + ')" style="padding:0.3rem 0.8rem; font-size:0.8rem; color:#ef4444;">Delete</button>' +
+                        '</td>' +
+                    '</tr>';
+                }).join('');
+            }
+        } catch (err) { console.error('Inventory fetch error:', err); }
+
+     // Orders — payment-aware action buttons
+        try {
+            const ordersRes = await fetch('/api/seller/' + sellerId + '/orders');
+            if (ordersRes.ok) {
+                const orders = await ordersRes.json();
+                const ordersList = document.getElementById('ordersList');
+                ordersList.innerHTML = orders.map(function(o) {
+                    const status        = (o.order.status || 'PENDING').toUpperCase();
+                    const paymentMethod = (o.order.paymentMethod || 'COD').toUpperCase();
+                    const isCOD         = paymentMethod === 'COD';
+
+                    let actions = '';
+                    if (status === 'PENDING') {
+                        if (isCOD) {
+                            actions = '<button class="tab-btn" onclick="handleOrderAction(' + o.order.orderId + ', \'accept\')" style="padding:0.3rem 0.8rem; font-size:0.8rem; background:#16a34a; color:white;">✔ Accept</button> ' +
+                                      '<button class="tab-btn" onclick="handleOrderAction(' + o.order.orderId + ', \'reject\')" style="padding:0.3rem 0.8rem; font-size:0.8rem; color:#ef4444;">✘ Reject</button>';
+                        } else {
+                            actions = '<button class="tab-btn" onclick="handleOrderAction(' + o.order.orderId + ', \'confirm-payment\')" style="padding:0.3rem 0.8rem; font-size:0.8rem; background:#2563eb; color:white;" title="Confirm payment received then accept">💳 Payment Received</button> ' +
+                                      '<button class="tab-btn" onclick="handleOrderAction(' + o.order.orderId + ', \'reject\')" style="padding:0.3rem 0.8rem; font-size:0.8rem; color:#ef4444;">✘ Reject</button>';
+                        }
+                    } else if (status === 'ACCEPTED') {
+                        actions = '<button class="tab-btn" onclick="handleOrderAction(' + o.order.orderId + ', \'ship\')" style="padding:0.3rem 0.8rem; font-size:0.8rem; background:#7c3aed; color:white;">🚚 Ship</button>';
+                    } else if (status === 'SHIPPED') {
+                        actions = isCOD
+                            ? '<button class="tab-btn" onclick="handleOrderAction(' + o.order.orderId + ', \'deliver\')" style="padding:0.3rem 0.8rem; font-size:0.8rem; background:var(--primary-color); color:white;">📦 Delivered + Collect Cash</button>'
+                            : '<button class="tab-btn" onclick="handleOrderAction(' + o.order.orderId + ', \'deliver\')" style="padding:0.3rem 0.8rem; font-size:0.8rem; background:var(--primary-color); color:white;">📦 Mark Delivered</button>';
+                    }
+
+                    const payColor = isCOD ? '#f59e0b' : '#2563eb';
+                    const payLabel = isCOD ? 'COD' : paymentMethod.replace('_', ' ');
+
+                    return '<tr>' +
+                        '<td>#' + o.orderItemId + '</td>' +
+                        '<td>' + o.product.name + '</td>' +
+                        '<td>' + o.quantity + '</td>' +
+                        '<td>₹' + (o.price * o.quantity).toFixed(2) + '</td>' +
+                        '<td><span style="background:' + payColor + '22; color:' + payColor + '; border:1px solid ' + payColor + '55; padding:0.2rem 0.55rem; border-radius:20px; font-size:0.75rem; font-weight:600;">' + payLabel + '</span></td>' +
+                        '<td><span class="status-badge ' + status.toLowerCase() + '">' + status + '</span></td>' +
+                        '<td style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center;">' +
+                            '<button class="tab-btn" onclick="viewOrderDetails(' + o.order.orderId + ')" style="padding:0.3rem 0.8rem; font-size:0.8rem; border-color:var(--primary-color); color:var(--primary-color);">View</button> ' +
+                            actions +
+                        '</td>' +
+                    '</tr>';
+                }).join('');
+            }
+        } catch (err) { console.error('Orders fetch error:', err); }
+
+        fetchNotifications();
+    }
+    
+    async function handleOrderAction(orderId, action) {
+        const labels = {
+            'accept'          : 'accept this COD order',
+            'confirm-payment' : 'confirm payment received and accept this order',
+            'ship'            : 'mark this order as shipped',
+            'deliver'         : 'mark this order as delivered',
+            'reject'          : 'reject this order'
+        };
+        if (!confirm('Are you sure you want to ' + (labels[action] || action) + '?')) return;
+        try {
+            const res = await fetch('/api/orders/' + action + '/' + orderId + '?sellerId=' + sellerId, { method: 'PATCH' });
+            if (res.ok) {
+                fetchDashboardData();
+            } else {
+                const err = await res.text();
+                alert('Error: ' + err);
+            }
+        } catch (err) { alert('Update failed: ' + err); }
+    }
+
+
+    // ── Product modal ─────────────────────────────────────────────────
+    function openProductModal(product) {
+        const modal = document.getElementById('productModal');
+        const form  = document.getElementById('productForm');
+        document.getElementById('prodFormMsg').style.display = 'none';
+        document.getElementById('priceError').style.display  = 'none';
+        document.getElementById('stockError').style.display  = 'none';
+
+        if (product) {
+            document.getElementById('modalTitle').textContent      = 'Edit Product';
+            document.getElementById('editProductId').value         = product.productId;
+            document.getElementById('prodName').value              = product.name;
+            document.getElementById('prodDesc').value              = product.description || '';
+            document.getElementById('prodPrice').value             = product.price;
+            document.getElementById('prodMrp').value               = product.mrp;
+            document.getElementById('prodStock').value             = product.stock;
+            document.getElementById('prodThreshold').value         = product.inventoryThreshold || '';
+            document.getElementById('prodCategory').value          = product.categoryId || '';
+        } else {
+            document.getElementById('modalTitle').textContent = 'Add Product';
+            form.reset();
+            document.getElementById('editProductId').value = '';
+        }
+        modal.style.display = 'flex';
+    }
+
+    function closeProductModal() {
+        document.getElementById('productModal').style.display = 'none';
+    }
+
+    document.getElementById('productForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        if (document.getElementById('priceError').style.display === 'block' ||
+            document.getElementById('stockError').style.display === 'block') {
+            showProdMsg('Please fix the validation errors before saving.', true);
+            return;
+        }
+
+        const id           = document.getElementById('editProductId').value;
+        const thresholdVal = document.getElementById('prodThreshold').value;
+        const price        = parseFloat(document.getElementById('prodPrice').value);
+        const mrp          = parseFloat(document.getElementById('prodMrp').value);
+        const stock        = parseInt(document.getElementById('prodStock').value);
+        const threshold    = thresholdVal ? parseInt(thresholdVal) : null;
+
+        if (price > mrp) {
+            showProdMsg('Selling price cannot be greater than MRP.', true); return;
+        }
+        if (threshold !== null && stock <= threshold) {
+            showProdMsg('Stock must be greater than the inventory threshold.', true); return;
+        }
+
+        const data = {
+            name: document.getElementById('prodName').value,
+            description: document.getElementById('prodDesc').value,
+            price: price,
+            mrp: mrp,
+            stock: stock,
+            inventoryThreshold: threshold,
+            categoryId: parseInt(document.getElementById('prodCategory').value)
+        };
+
+        const url    = id ? '/api/products/' + id : '/api/products';
+        const method = id ? 'PUT' : 'POST';
+
+        try {
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (res.ok) {
+                const savedProduct = await res.json();
+                const productId    = savedProduct.productId;
+
+                // Check which image tab is active
+                const isUploadTab = document.getElementById('imgPanelUpload').style.display !== 'none';
+
+                if (isUploadTab) {
+                    // FILE UPLOAD path
+                    const imageInput = document.getElementById('prodImages');
+                    if (imageInput.files.length > 0) {
+                        const formData = new FormData();
+                        for (let i = 0; i < imageInput.files.length; i++) {
+                            formData.append('images', imageInput.files[i]);
+                        }
+                        const saveBtn  = e.target.querySelector('button[type="submit"]');
+                        const origText = saveBtn.textContent;
+                        saveBtn.textContent = 'Uploading Images...';
+                        saveBtn.disabled    = true;
+                        try {
+                            const imgRes = await fetch('/api/products/' + productId + '/upload-images', {
+                                method: 'POST', body: formData
+                            });
+                            if (!imgRes.ok) showProdMsg('Product saved but image upload failed.', true);
+                        } finally {
+                            saveBtn.textContent = origText;
+                            saveBtn.disabled    = false;
+                        }
+                    }
+                } else {
+                    // IMAGE URL path
+                    const imageUrl = document.getElementById('prodImageUrl').value.trim();
+                    if (imageUrl) {
+                        const urlRes = await fetch('/api/products/' + productId + '/add-image-url', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ imageUrl: imageUrl })
+                        });
+                        if (!urlRes.ok) showProdMsg('Product saved but image URL could not be saved.', true);
+                    }
+                }
+
+                closeProductModal();
+                fetchDashboardData();
+            }
+        } catch (err) {
+            showProdMsg('Request failed: ' + err, true);
+        }
+    });
+
+    async function deleteProduct(id) {
+        if (!confirm('Are you sure you want to delete this product?')) return;
+        try {
+            const res = await fetch('/api/products/' + id, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (res.ok) {
+                alert('Product deleted successfully.');
+                fetchDashboardData();
+            } else {
+                const errText = await res.text();
+                alert('Delete failed (' + res.status + '): ' + errText);
+            }
+        } catch (err) {
+            alert('Network error while deleting: ' + err.message);
+            console.error('deleteProduct error:', err);
+        }
+    }
+
+    // ── Notifications ─────────────────────────────────────────────────
+    //async function fetchNotifications() {
+    //    try {
+    //        const res = await fetch('/api/notifications/user/' + sellerId);
+    //        const notifications = await res.json();
+    //        const list = document.getElementById('notificationsList');
+    //        if (notifications.length === 0) {
+    //            list.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:2rem;">No notifications yet.</p>';
+    //            return;
+    //        }
+    //        list.innerHTML = notifications.map(function(n) {
+    //            const msg = n.message || '';
+    //            let color = '#1e293b', fontWeight = '400';
+    //            if      (msg.includes('[PLACED]'))                                          color = '#007bff';
+    //         else if (msg.includes('[ACCEPTED]') || msg.includes('[PAYMENT CONFIRMED]')) color = '#28a745';
+    //            else if (msg.includes('[REJECTED]') || msg.includes('[CANCELLED]'))         color = '#dc3545';
+    //            else if (msg.includes('[DELIVERED]'))                                       color = '#20c997';
+    //            else if (msg.includes('[SHIPPED]'))                                         color = '#7c3aed';
+    //            else if (msg.includes('[LOW STOCK]')) { color = '#fd7e14'; fontWeight = '600'; }
+//
+//                return '<div class="notification-item ' + (n.isRead === 0 ? 'unread' : '') + '">' +
+//                    '<div class="notification-text">' +
+//                        '<p style="color:' + color + '; font-weight:' + fontWeight + ';">' + msg + '</p>' +
+//                        '<div class="notification-time">' + formatNotificationDate(n.createdAt) + '</div>' +
+//                    '</div></div>';
+//            }).join('');
+//       } catch (err) { console.error('Notifications fetch error:', err); }
+//    }
+
+    /* function formatNotificationDate(dt) {
+        if (!dt) return 'N/A';
+        if (Array.isArray(dt)) {
+            const d = new Date(dt[0], dt[1] - 1, dt[2], dt[3], dt[4], dt[5] || 0);
+            return d.toLocaleString();
+        }
+        return new Date(dt).toLocaleString();
+    }
+
+    async function clearAllNotifications() {
+        await fetch('/api/notifications/user/' + sellerId + '/clear-all', { method: 'PATCH' });
+        await fetchNotifications();
+    } 
+*/
+    // ── Order actions ─────────────────────────────────────────────────
+    async function updateOrderStatus(orderId, action) {
+        if (!confirm('Are you sure you want to ' + action + ' this order?')) return;
+        try {
+            const res = await fetch('/api/orders/' + action + '/' + orderId + '?sellerId=' + sellerId, { method: 'PATCH' });
+            if (res.ok) {
+                fetchDashboardData();
+            } else {
+                const err = await res.text();
+                alert('Error: ' + err);
+            }
+        } catch (err) { alert('Update failed: ' + err); }
+    }
+
+    async function viewOrderDetails(orderId) {
+        try {
+            const res = await fetch('/api/orders/' + orderId);
+            if (!res.ok) throw new Error('Order not found');
+            const order = await res.json();
+
+            document.getElementById('detailOrderId').textContent    = '#' + order.orderId;
+            document.getElementById('detailBuyerName').textContent  = order.buyerName  || 'Anonymous Buyer';
+            document.getElementById('detailBuyerEmail').textContent = order.buyerEmail || 'No email provided';
+            document.getElementById('detailStatus').innerHTML       = '<span class="status-badge ' + order.status.toLowerCase() + '">' + order.status + '</span>';
+            document.getElementById('detailDate').textContent       = new Date(order.orderDate).toLocaleString();
+            document.getElementById('detailAddress').textContent    = order.shippingAddress || 'No address provided';
+            document.getElementById('detailTotal').textContent      = '₹' + order.totalAmount.toFixed(2);
+
+            const pm = (order.paymentMethod || 'N/A').replace('_', ' ');
+            document.getElementById('detailPaymentMethod').textContent = '💳 ' + pm;
+            const ps = order.paymentStatus || 'PENDING';
+            const psColor = ps === 'COMPLETED' ? '#16a34a' : ps === 'FAILED' ? '#dc2626' : '#f59e0b';
+            document.getElementById('detailPaymentStatus').innerHTML =
+                'Status: <span style="color:' + psColor + '; font-weight:600;">' + ps + '</span>' +
+                (order.paymentMethod === 'COD' ? ' <span style="color:#94a3b8; font-size:0.8rem;">(collected on delivery)</span>' : '');
+
+            document.getElementById('detailItemsList').innerHTML = order.items.map(function(item) {
+                return '<tr><td>' + item.productName + '</td><td>' + item.quantity + '</td><td>₹' + item.priceAtPurchase.toFixed(2) + '</td><td style="font-weight:600;">₹' + item.subTotal.toFixed(2) + '</td></tr>';
+            }).join('');
+
+            document.getElementById('orderDetailsModal').style.display = 'flex';
+        } catch (err) { alert('Failed to load order details: ' + err.message); }
+    }
+
+
+    function closeOrderModal() {
+        document.getElementById('orderDetailsModal').style.display = 'none';
+    }
+
+    // ── Change Password ───────────────────────────────────────────────
+    function togglePwd(inputId, eyeEl) {
+        const input = document.getElementById(inputId);
+        if (input.type === 'password') {
+            input.type      = 'text';
+            eyeEl.textContent = '🙈';
+        } else {
+            input.type      = 'password';
+            eyeEl.textContent = '👁';
+        }
+    }
+
+    async function changePassword() {
+        const oldPwd     = document.getElementById('cpOld').value.trim();
+        const newPwd     = document.getElementById('cpNew').value.trim();
+        const confirmPwd = document.getElementById('cpConfirm').value.trim();
+        const msgEl      = document.getElementById('cpMsg');
+
+        function showMsg(text, isError) {
+            msgEl.textContent      = text;
+            msgEl.style.background = isError ? '#fee2e2' : '#dcfce7';
+            msgEl.style.color      = isError ? '#dc2626' : '#16a34a';
+            msgEl.style.display    = 'block';
+        }
+
+        if (!oldPwd || !newPwd || !confirmPwd) {
+            showMsg('All fields are required.', true); return;
+        }
+        if (newPwd !== confirmPwd) {
+            showMsg('New password and confirm password do not match.', true); return;
+        }
+        if (newPwd.length < 8) {
+            showMsg('New password must be at least 8 characters.', true); return;
+        }
+
+        try {
+            const res = await fetch('/api/users/change-password-authenticated', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ oldPassword: oldPwd, newPassword: newPwd })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showMsg('✅ ' + data.message, false);
+                document.getElementById('cpOld').value     = '';
+                document.getElementById('cpNew').value     = '';
+                document.getElementById('cpConfirm').value = '';
+            } else {
+                showMsg('❌ ' + data.message, true);
+            }
+        } catch (err) {
+            showMsg('Request failed: ' + err, true);
+        }
+    }
+
+    // ── Tab switcher ──────────────────────────────────────────────────
+    function switchTab(event, tabId) {
+        document.querySelectorAll('.tab-content').forEach(function(t) { t.style.display = 'none'; });
+        document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+        document.getElementById(tabId + '-tab').style.display = 'block';
+        event.target.classList.add('active');
+    }
+
+    function updateImageCount() {
+        const input = document.getElementById('prodImages');
+        const msg   = document.getElementById('imageCountMsg');
+        msg.innerHTML = input.files.length > 0
+            ? '<span style="color:var(--primary-color); font-weight:600;">' + input.files.length + ' file(s) selected.</span>'
+            : 'You can select multiple images at once.';
+    }
+    
+ // ── Image tab switcher in product modal ───────────────────────────
+    function switchImgTab(tab) {
+        const isUpload = tab === 'upload';
+        document.getElementById('imgPanelUpload').style.display = isUpload ? 'block' : 'none';
+        document.getElementById('imgPanelUrl').style.display    = isUpload ? 'none'  : 'block';
+        document.getElementById('imgTabUpload').style.background = isUpload ? 'var(--primary-color)' : '#f1f5f9';
+        document.getElementById('imgTabUpload').style.color      = isUpload ? '#fff'  : '#64748b';
+        document.getElementById('imgTabUrl').style.background    = isUpload ? '#f1f5f9' : 'var(--primary-color)';
+        document.getElementById('imgTabUrl').style.color         = isUpload ? '#64748b' : '#fff';
+    }
+
+    function previewImageUrl() {
+        const url     = document.getElementById('prodImageUrl').value.trim();
+        const preview = document.getElementById('imgUrlPreview');
+        const img     = document.getElementById('imgUrlPreviewImg');
+        if (url) {
+            img.src            = url;
+            preview.style.display = 'block';
+            img.onerror        = function() { preview.style.display = 'none'; };
+            img.onload         = function() { preview.style.display = 'block'; };
+        } else {
+            preview.style.display = 'none';
+        }
+    }
+
+    fetchCategories();
+   
+    fetchDashboardData();
+</script>
+    </section>
+</body>
+</html>

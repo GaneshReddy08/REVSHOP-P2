@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      th:replace="~{fragments/layout :: main-layout(~{::section})}">
+<body>
+    <section>
+        <div class="container">
+            <h1 style="font-family:'Outfit',sans-serif; margin-bottom: 2rem;">My Favorites</h1>
+            
+            <div id="favoritesLoading" style="text-align:center; padding:4rem;">
+                <p style="color:var(--text-muted);">Loading your favorites...</p>
+            </div>
+
+            <div class="product-grid" id="favoritesGrid" style="display:none;">
+                <!-- Favorites loaded via JS -->
+            </div>
+
+            <div id="noFavorites" style="display:none; text-align:center; padding:4rem; color:var(--text-muted);">
+                <h2 style="font-family:'Outfit',sans-serif; margin-bottom:1rem;">Your wishlist is empty</h2>
+                <p>Browse products and click the heart icon to save them here.</p>
+                <a href="/" class="btn-checkout" style="display:inline-block; margin-top:1.5rem; text-decoration:none;">Explore Products</a>
+            </div>
+        </div>
+
+        <script th:inline="none">
+            async function loadFavorites() {
+                try {
+                    const res = await fetch('/api/favorites/mine'); 
+                    if (!res.ok) {
+                        if (res.status === 401) {
+                            window.location.href = '/login';
+                            return;
+                        }
+                        throw new Error('Failed to load');
+                    }
+                    
+                    const products = await res.json();
+                    document.getElementById('favoritesLoading').style.display = 'none';
+                    
+                    if (products.length === 0) {
+                        document.getElementById('noFavorites').style.display = 'block';
+                        return;
+                    }
+
+                    const grid = document.getElementById('favoritesGrid');
+                    grid.style.display = 'grid';
+                    grid.innerHTML = products.map(p => `
+                        <div class="product-card" id="fav-product-${p.productId}">
+                            <a href="/product/${p.productId}" style="text-decoration:none; color:inherit;">
+                                <img src="${p.primaryImageUrl || 'https://via.placeholder.com/300x200?text=No+Image'}" 
+                                     class="product-image" alt="${p.name}">
+                            </a>
+                            <div class="product-info">
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                                    <div class="product-rating">${p.averageRating > 0 ? '⭐ ' + p.averageRating : ''}</div>
+                                    <button class="heart-btn favorited" onclick="toggleFavorite(${p.productId}, this, true)">
+                                        <svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                                    </button>
+                                </div>
+                                <a href="/product/${p.productId}" style="text-decoration:none; color:inherit;">
+                                    <h3 class="product-name">${p.name}</h3>
+                                </a>
+                                <div class="product-footer">
+                                    <div>
+                                        <span class="product-price">₹${p.price.toFixed(2)}</span>
+                                    </div>
+                                    <button class="btn-add-cart" onclick="addToCart(${p.productId})">Add to Cart</button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+
+                } catch (err) {
+                    document.getElementById('favoritesLoading').innerHTML = '<p style="color:#ef4444;">Error loading favorites. Please try again.</p>';
+                }
+            }
+
+            // The toggleFavorite function in main.js will handle the removal
+            // We can override or add a callback if needed, but standard removal is fine.
+
+            loadFavorites();
+        </script>
+    </section>
+</body>
+</html>

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      th:replace="~{fragments/layout :: main-layout(~{::section})}">
+<body>
+    <section>
+        <div class="hero" style="border-radius: 0; padding: 3rem 2rem;">
+            <h1>My Notifications</h1>
+            <p>Stay updated with your order status and alerts</p>
+        </div>
+
+        <div class="container" style="max-width: 900px;">
+            <input type="hidden" id="currentUserId" th:value="${session.userId}">
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h2 style="font-family: 'Outfit', sans-serif;">Recent Alerts</h2>
+                <button class="tab-btn" onclick="markAllRead()" id="markAllBtn">Mark All as Read</button>
+            </div>
+
+            <div id="notificationsList">
+                <div style="text-align: center; padding: 3rem;">
+                    <p>Loading notifications...</p>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            const userId = document.getElementById('currentUserId').value;
+            const notificationsList = document.getElementById('notificationsList');
+
+            async function fetchNotifications() {
+                try {
+                    const response = await fetch('/api/notifications/user/' + userId);
+                    if (!response.ok) throw new Error("Failed to fetch notifications");
+                    
+                    const notifications = await response.json();
+                    
+                    if (notifications.length === 0) {
+                        notificationsList.innerHTML = '<div class="empty-state"><h3>All caught up!</h3><p>You have no notifications at the moment.</p></div>';
+                        document.getElementById('markAllBtn').style.display = 'none';
+                        return;
+                    }
+
+                    notificationsList.innerHTML = notifications.map(n => {
+                        const msg = n.message || '';
+                        let color = '#1e293b'; // Default text color
+                        let fontWeight = '400';
+
+                        if (msg.includes('[PLACED]')) color = '#007bff';
+                        else if (msg.includes('[ACCEPTED]')) color = '#28a745';
+                        else if (msg.includes('[REJECTED]') || msg.includes('[CANCELLED]')) color = '#dc3545';
+                        else if (msg.includes('[DELIVERED]')) color = '#20c997';
+                        else if (msg.includes('[LOW STOCK]')) {
+                            color = '#fd7e14';
+                            fontWeight = '600';
+                        }
+
+                        return `
+                            <div class="notification-item ${n.isRead === 0 ? 'unread' : ''}" id="notif-${n.notificationId}">
+                                <div class="notification-text">
+                                    <p style="color: ${color}; font-weight: ${fontWeight};">${msg}</p>
+                                    <div class="notification-time">${new Date(n.createdAt).toLocaleString()}</div>
+                                </div>
+                                ${n.isRead === 0 ? `
+                                    <button class="btn-remove" style="color: var(--primary-color); font-size: 0.8rem;" onclick="markAsRead(${n.notificationId})">
+                                        Mark as Read
+                                    </button>
+                                ` : ''}
+                            </div>
+                        `;
+                    }).join('');
+
+                } catch (err) {
+                    console.error(err);
+                    notificationsList.innerHTML = '<div class="error-msg">Failed to load notifications. Please try again later.</div>';
+                }
+            }
+
+            async function markAsRead(id) {
+                try {
+                    const response = await fetch('/api/notifications/' + id + '/read', {
+                        method: 'PATCH'
+                    });
+                    if (response.ok) {
+                        const item = document.getElementById('notif-' + id);
+                        if (item) {
+                            item.classList.remove('unread');
+                            const btn = item.querySelector('button');
+                            if (btn) btn.remove();
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error marking as read:", err);
+                }
+            }
+
+            async function markAllRead() {
+                try {
+                    const response = await fetch('/api/notifications/user/' + userId + '/clear-all', {
+                        method: 'PATCH'
+                    });
+                    if (response.ok) {
+                        fetchNotifications();
+                    }
+                } catch (err) {
+                    console.error("Error clearing all notifications:", err);
+                }
+            }
+
+            // Initial load
+            document.addEventListener('DOMContentLoaded', fetchNotifications);
+        </script>
+    </section>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      th:replace="~{fragments/layout :: main-layout(~{::section})}">
+<body>
+    <section class="auth-section">
+        <div class="auth-container">
+            <div class="auth-card">
+                <h2>Create Account</h2>
+                <p>Join RevShop to start shopping or selling</p>
+                
+                <form id="registerForm">
+                    <div id="register-error" class="error-msg" style="display: none;"></div>
+                    <div id="register-success" class="success-msg" style="display: none;"></div>
+
+                    <div class="form-group">
+                        <label>Select Your Role</label>
+                        <div class="role-selector">
+                            <label class="role-option">
+                                <input type="radio" name="role" value="BUYER" checked onchange="toggleRoleFields()">
+                                <span class="role-label">Buyer</span>
+                            </label>
+                            <label class="role-option">
+                                <input type="radio" name="role" value="SELLER" onchange="toggleRoleFields()">
+                                <span class="role-label">Seller</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="name">Full Name</label>
+                            <input type="text" id="name" name="name" placeholder="John Doe" 
+                                   pattern="^[a-zA-Z\s]+$" title="Name should only contain letters and spaces." required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email Address</label>
+                            <input type="email" id="email" name="email" placeholder="john@example.com" 
+                                   pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$" title="Please enter a valid email address." required>
+                        </div>
+                        <div class="form-group">
+                            <label for="mobileNumber">Mobile Number</label>
+                            <input type="tel" id="mobileNumber" name="mobileNumber" placeholder="9876543210" 
+                                   pattern="[6-9][0-9]{9}" title="Mobile number must be 10 digits and start with 6, 7, 8, or 9." required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Password</label>
+                            <input type="password" id="password" name="password" placeholder="••••••••" 
+                                   pattern="^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=_!]).{8,}$" 
+                                   title="Minimum 8 characters, at least one uppercase, one lowercase, one number, and one symbol." required>
+                        </div>
+                    </div>
+
+                    <!-- Seller Specific Fields -->
+                    <div id="seller-fields" style="display: none;">
+                        <div class="form-group">
+                            <label for="businessName">Business Name</label>
+                            <input type="text" id="businessName" name="businessName" placeholder="Your Brand Name">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="address">Address</label>
+                        <input type="text" id="address" name="address" placeholder="123 Shopping St, City" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="securityQuestionId">Security Question</label>
+                        <select id="securityQuestionId" name="securityQuestionId" required>
+                            <option value="">Select a question...</option>
+                            <option th:each="q : ${securityQuestions}" 
+                                    th:value="${q.questionId}" 
+                                    th:text="${q.questionText}"></option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="securityAnswer">Security Answer</label>
+                        <input type="text" id="securityAnswer" name="securityAnswer" placeholder="Your Answer" required>
+                    </div>
+
+                    <button type="submit" class="btn-auth">Register Now</button>
+                </form>
+
+                <div class="auth-footer">
+                    <p>Already have an account? <a th:href="@{/login}">Login Here</a></p>
+                </div>
+            </div>
+        </div>
+        <script>
+            // Make it global so onchange/onclick can see it
+            window.toggleRoleFields = function() {
+                console.log("toggleRoleFields called");
+                const roleInput = document.querySelector('input[name="role"]:checked');
+                if (!roleInput) {
+                    console.log("No role input checked found");
+                    return;
+                }
+                const role = roleInput.value;
+                console.log("Selected role:", role);
+                const sellerFields = document.getElementById('seller-fields');
+                const businessNameInput = document.getElementById('businessName');
+                
+                if (role === 'SELLER') {
+                    sellerFields.style.display = 'block';
+                    businessNameInput.required = true;
+                    console.log("Seller fields shown");
+                } else {
+                    sellerFields.style.display = 'none';
+                    businessNameInput.required = false;
+                    console.log("Seller fields hidden");
+                }
+            };
+
+            document.addEventListener('DOMContentLoaded', () => {
+                console.log("Registration page DOM loaded");
+                const form = document.getElementById('registerForm');
+                
+                if (form) {
+                    form.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        console.log("Form submission started");
+                        const formData = new FormData(e.target);
+                        const data = Object.fromEntries(formData.entries());
+                        
+                        // Ensure mobileNumber is a number if possible
+                        if (data.mobileNumber) {
+                            data.mobileNumber = parseInt(data.mobileNumber);
+                        }
+                        // Ensure securityQuestionId is a number
+                        if (data.securityQuestionId) {
+                            data.securityQuestionId = parseInt(data.securityQuestionId);
+                        }
+
+                        console.log("Submitting data:", data);
+
+                        const errorDiv = document.getElementById('register-error');
+                        const successDiv = document.getElementById('register-success');
+                        
+                        errorDiv.style.display = 'none';
+                        successDiv.style.display = 'none';
+
+                        try {
+                            const response = await fetch('/api/users/register', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(data)
+                            });
+
+                            console.log("Response status:", response.status);
+
+                            if (response.ok) {
+                                const savedUser = await response.json();
+                                console.log("Registration success:", savedUser);
+                                successDiv.textContent = "Registration successful! Redirecting to login...";
+                                successDiv.style.display = 'block';
+                                setTimeout(() => {
+                                    console.log("Redirecting to /login");
+                                    window.location.href = '/login';
+                                }, 2000);
+                            } else {
+                                const errorData = await response.json();
+                                console.log("Registration error payload:", errorData);
+                                errorDiv.textContent = errorData.message || "Registration failed. Please try again.";
+                                errorDiv.style.display = 'block';
+                            }
+                        } catch (err) {
+                            console.error("Fetch error:", err);
+                            errorDiv.textContent = "An error occurred. Please try again later.";
+                            errorDiv.style.display = 'block';
+                        }
+                    });
+                } else {
+                    console.error("registerForm not found!");
+                }
+                
+                // Initial call
+                window.toggleRoleFields();
+            });
+        </script>
+    </section>
+</body>
+</html>

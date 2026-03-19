@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      th:replace="~{fragments/layout :: main-layout(~{::section})}">
+<body>
+    <section class="auth-section">
+        <div class="auth-container">
+            <div class="auth-card">
+                <h2>Welcome Back</h2>
+                <p>Login to your RevShop account</p>
+                
+                <form id="loginForm" th:action="@{/perform_login}" method="post">
+                    <div th:if="${param.error}" class="error-msg">
+                        Invalid email or password.
+                    </div>
+                    <div th:if="${param.logout}" class="success-msg">
+                        You have been logged out.
+                    </div>
+
+                    <div class="form-group">
+                        <label for="username">Email Address</label>
+                        <input type="email" id="username" name="username" placeholder="name@example.com" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <div style="position:relative;">
+                            <input type="password" id="password" name="password" placeholder="••••••••" required
+                                   style="width:100%; padding-right:2.8rem;">
+                            <span onclick="toggleLoginPwd()" id="loginEye"
+                                  style="position:absolute; right:10px; top:50%; transform:translateY(-50%);
+                                         cursor:pointer; color:#64748b; font-size:0.85rem; user-select:none;">👁</span>
+                        </div>
+                    </div>
+
+                    <div class="auth-options">
+                        <a th:href="@{/forgot-password}" class="forgot-link">Forgot password?</a>
+                    </div>
+
+                    <button type="submit" class="btn-auth">Login</button>
+                </form>
+
+                <div class="auth-footer">
+                    <p>Don't have an account? <a th:href="@{/register}">Create Account</a></p>
+                </div>
+            </div>
+        </div>
+        
+         <script>
+            function toggleLoginPwd() {
+                const input = document.getElementById('password');
+                const eye   = document.getElementById('loginEye');
+                if (input.type === 'password') {
+                    input.type    = 'text';
+                    eye.textContent = '🙈';
+                } else {
+                    input.type    = 'password';
+                    eye.textContent = '👁';
+                }
+            }
+        </script>
+    </section>
+</body>
+</html>

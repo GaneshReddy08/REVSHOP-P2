@@ -1,0 +1,507 @@
+<header th:fragment="header" class="navbar">
+    <div class="logo">
+        <a th:href="@{/}">RevShop</a>
+    </div>
+    <ul class="nav-links">
+        <li><a th:href="@{/}">Home</a></li>
+        <li th:if="${session.userId == null}">
+            <a th:href="@{/register}">Register</a>
+        </li>
+        
+        <li th:if="${session.userRole == 'BUYER'}">
+            <a th:href="@{/cart}">Cart (<span id="cart-count">0</span>)</a>
+        </li>
+        <li th:if="${session.userRole == 'BUYER'}">
+            <a th:href="@{/orders}">My Orders</a>
+        </li>
+        <li th:if="${session.userRole == 'BUYER'}">
+            <a th:href="@{/favorites}">Favorites</a>
+        </li>
+        <li th:if="${session.userId != null}" style="position: relative;">
+    		<a th:href="@{/notifications}" style="position: relative; display: inline-block;">
+        		🔔 Notifications
+        		<span id="notifBadge" style="
+		            display: none;
+		            position: absolute;
+		            top: -8px;
+		            right: -14px;
+		            background: #ef4444;
+		            color: #fff;
+		            font-size: 10px;
+		            font-weight: 700;
+		            border-radius: 50%;
+		            min-width: 18px;
+		            height: 18px;
+		            line-height: 18px;
+		            text-align: center;
+		            padding: 0 4px;
+		            pointer-events: none;">
+		        </span>
+		    </a>
+		</li>
+        
+        <li th:if="${session.userRole == 'SELLER'}">
+            <a th:href="@{/seller/dashboard}">My Shop</a>
+        </li>
+
+        <li th:if="${session.userId == null}">
+            <a th:href="@{/login}" class="btn-login">Login</a>
+        </li>
+        <!-- Account Dropdown (shown when logged in - both BUYER & SELLER) -->
+        <li th:if="${session.userId != null}" style="position: relative;">
+            <a href="#" onclick="toggleAccountMenu(event)"
+               style="display:flex; align-items:center; gap:0.35rem;">
+                👤 Account ▾
+            </a>
+            <div id="accountDropdownMenu" style="
+                display: none;
+                position: absolute;
+                right: 0;
+                top: calc(100% + 8px);
+                background: #fff;
+                border: 1px solid #e2e8f0;
+                border-radius: 10px;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+                min-width: 190px;
+                z-index: 999;
+                overflow: hidden;">
+                <a href="#" onclick="openChangePasswordModal(); return false;" style="
+                    display: block;
+                    padding: 0.75rem 1.25rem;
+                    color: #1e293b;
+                    text-decoration: none;
+                    font-size: 0.95rem;
+                    border-bottom: 1px solid #f1f5f9;"
+                   onmouseover="this.style.background='#f8fafc'"
+                   onmouseout="this.style.background='transparent'">
+                    🔑 Change Password
+                </a>
+                <a th:href="@{/logout}" style="
+                    display: block;
+                    padding: 0.75rem 1.25rem;
+                    color: #ef4444;
+                    text-decoration: none;
+                    font-size: 0.95rem;"
+                   onmouseover="this.style.background='#fef2f2'"
+                   onmouseout="this.style.background='transparent'">
+                    🚪 Logout
+                </a>
+            </div>
+        </li>
+    </ul>
+    
+    <!-- Change Password Modal (works for both BUYER & SELLER) -->
+		<!-- Change Password Modal -->
+<!-- Change Password Modal -->
+<!-- Change Password Modal -->
+<div id="globalChangePwdModal" onclick="if(event.target===this)closeChangePasswordModal()" style="
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100vw;
+    height:100vh;
+    background:rgba(15,23,42,0.65);
+    backdrop-filter:blur(5px);
+    -webkit-backdrop-filter:blur(5px);
+    z-index:2147483647;
+    align-items:center;
+    justify-content:center;">
+    <div style="
+        background: #fff;
+        width: 100%;
+        max-width: 430px;
+        border-radius: 20px;
+        box-shadow: 0 25px 60px rgba(0,0,0,0.22);
+        padding: 1.75rem 1.75rem 1.5rem;
+        position: relative;
+        box-sizing: border-box;
+        margin: 0;">
+
+        <!-- Close -->
+        <button onclick="closeChangePasswordModal()" style="
+            position: absolute; top: 0.9rem; right: 0.9rem;
+            width: 28px; height: 28px;
+            background: #f1f5f9; border: none; border-radius: 50%;
+            font-size: 0.78rem; cursor: pointer; color: #64748b;
+            display: flex; align-items: center; justify-content: center;
+            line-height: 1; padding: 0;">✕</button>
+
+        <!-- Title -->
+        <div style="margin-bottom: 1.1rem; padding-right: 2rem;">
+            <h2 style="font-family:'Outfit',sans-serif; margin:0 0 0.2rem; font-size:1.25rem; color:#1e293b; font-weight:700;">🔑 Change Password</h2>
+            <p style="color:#94a3b8; font-size:0.78rem; margin:0;">All fields are required.</p>
+        </div>
+
+        <!-- Alert banner -->
+        <div id="globalCpMsg" style="display:none; padding:0.6rem 0.85rem; border-radius:9px; margin-bottom:0.9rem; font-size:0.84rem; font-weight:500; line-height:1.4;"></div>
+
+        <!-- Current Password -->
+        <div style="margin-bottom:0.8rem;">
+            <label style="display:block; font-size:0.8rem; font-weight:600; color:#374151; margin-bottom:0.3rem;">
+                Current Password <span style="color:#ef4444;">*</span>
+            </label>
+            <div style="position:relative;">
+                <input type="password" id="globalCpOld"
+                       placeholder="Enter your current password"
+                       oninput="clearCpMsg(); this.style.borderColor='#cbd5e1';"
+                       onfocus="this.style.borderColor='var(--primary-color)'; this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.1)';"
+                       onblur="this.style.boxShadow='none'; if(!this.value) this.style.borderColor='#e2e8f0';"
+                       style="width:100%; padding:0.65rem 2.6rem 0.65rem 0.8rem; border-radius:9px; border:1.5px solid #e2e8f0; font-size:0.88rem; outline:none; box-sizing:border-box; transition:border-color 0.2s,box-shadow 0.2s; font-family:inherit; color:#1e293b;">
+                <span onclick="toggleGlobalPwd('globalCpOld',this)"
+                      style="position:absolute; right:9px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8; font-size:0.9rem; user-select:none;">👁</span>
+            </div>
+        </div>
+
+        <!-- Divider -->
+        <div style="height:1px; background:#f1f5f9; margin:0.8rem 0;"></div>
+
+        <!-- New Password -->
+        <div style="margin-bottom:0.35rem;">
+            <label style="display:block; font-size:0.8rem; font-weight:600; color:#374151; margin-bottom:0.3rem;">
+                New Password <span style="color:#ef4444;">*</span>
+            </label>
+            <div style="position:relative;">
+                <input type="password" id="globalCpNew"
+                       placeholder="Enter new password"
+                       oninput="validateCpNew()"
+                       onfocus="this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.1)';"
+                       onblur="this.style.boxShadow='none';"
+                       style="width:100%; padding:0.65rem 2.6rem 0.65rem 0.8rem; border-radius:9px; border:1.5px solid #e2e8f0; font-size:0.88rem; outline:none; box-sizing:border-box; transition:border-color 0.2s,box-shadow 0.2s; font-family:inherit; color:#1e293b;">
+                <span onclick="toggleGlobalPwd('globalCpNew',this)"
+                      style="position:absolute; right:9px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8; font-size:0.9rem; user-select:none;">👁</span>
+            </div>
+
+            <!-- Strength bar -->
+            <div style="margin-top:0.4rem; display:flex; align-items:center; gap:0.6rem;">
+                <div style="flex:1; height:4px; border-radius:99px; background:#f1f5f9; overflow:hidden;">
+                    <div id="cpStrengthBar" style="height:100%; width:0%; border-radius:99px; transition:width 0.3s ease,background 0.3s ease;"></div>
+                </div>
+                <span id="cpStrengthLabel" style="font-size:0.72rem; font-weight:600; color:#94a3b8; white-space:nowrap; min-width:55px;"></span>
+            </div>
+
+            <!-- Rules — compact inline chips, hidden until typing -->
+            <div id="cpRulesBox" style="display:none; margin-top:0.55rem; padding:0.65rem 0.8rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px;">
+                <p style="font-size:0.68rem; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:0.06em; margin:0 0 0.4rem;">Must contain</p>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.22rem 0.5rem;">
+                    <span id="rule-len"   style="font-size:0.76rem; color:#94a3b8;">○ 8+ characters</span>
+                    <span id="rule-upper" style="font-size:0.76rem; color:#94a3b8;">○ Uppercase (A–Z)</span>
+                    <span id="rule-lower" style="font-size:0.76rem; color:#94a3b8;">○ Lowercase (a–z)</span>
+                    <span id="rule-num"   style="font-size:0.76rem; color:#94a3b8;">○ Number (0–9)</span>
+                    <span id="rule-sym"   style="font-size:0.76rem; color:#94a3b8; grid-column:span 2;">○ Special char (@#$%^&amp;+=_!)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirm Password -->
+        <div style="margin-top:0.8rem; margin-bottom:1.25rem;">
+            <label style="display:block; font-size:0.8rem; font-weight:600; color:#374151; margin-bottom:0.3rem;">
+                Confirm New Password <span style="color:#ef4444;">*</span>
+            </label>
+            <div style="position:relative;">
+                <input type="password" id="globalCpConfirm"
+                       placeholder="Re-enter new password"
+                       oninput="validateCpMatch()"
+                       onfocus="this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.1)';"
+                       onblur="this.style.boxShadow='none';"
+                       style="width:100%; padding:0.65rem 2.6rem 0.65rem 0.8rem; border-radius:9px; border:1.5px solid #e2e8f0; font-size:0.88rem; outline:none; box-sizing:border-box; transition:border-color 0.2s,box-shadow 0.2s; font-family:inherit; color:#1e293b;">
+                <span onclick="toggleGlobalPwd('globalCpConfirm',this)"
+                      style="position:absolute; right:9px; top:50%; transform:translateY(-50%); cursor:pointer; color:#94a3b8; font-size:0.9rem; user-select:none;">👁</span>
+            </div>
+            <p id="cpMatchMsg" style="font-size:0.76rem; margin:0.25rem 0 0; display:none; font-weight:600;"></p>
+        </div>
+
+        <!-- Buttons -->
+        <div style="display:flex; gap:0.6rem;">
+            <button onclick="submitGlobalChangePassword()" style="
+                flex:2; padding:0.72rem;
+                background:var(--primary-color); color:#fff;
+                border:none; border-radius:10px;
+                font-size:0.9rem; font-weight:700; font-family:inherit;
+                cursor:pointer; transition:opacity 0.2s,transform 0.1s;"
+                onmouseover="this.style.opacity='0.88'"
+                onmouseout="this.style.opacity='1'"
+                onmousedown="this.style.transform='scale(0.97)'"
+                onmouseup="this.style.transform='scale(1)'">
+                Update Password
+            </button>
+            <button onclick="closeChangePasswordModal()" style="
+                flex:1; padding:0.72rem;
+                background:#f1f5f9; color:#64748b;
+                border:none; border-radius:10px;
+                font-size:0.9rem; font-weight:700; font-family:inherit;
+                cursor:pointer; transition:background 0.2s;"
+                onmouseover="this.style.background='#e2e8f0'"
+                onmouseout="this.style.background='#f1f5f9'">
+                Cancel
+            </button>
+        </div>
+
+    </div>
+</div>
+			    
+		    <script th:inline="javascript">
+	    // ── Notification badge ────────────────────────────────────────────
+	    (async function loadNotificationBadge() {
+	        const userId = /*[[${session.userId}]]*/ null;
+	        if (!userId) return;
+	        try {
+	            const res   = await fetch('/api/notifications/user/' + userId + '/unread-count');
+	            const count = await res.json();
+	            const badge = document.getElementById('notifBadge');
+	            if (badge) {
+	                badge.textContent   = count > 99 ? '99+' : count;
+	                badge.style.display = count > 0 ? 'inline-block' : 'none';
+	            }
+	        } catch (e) { console.warn('Could not load notification count', e); }
+	    })();
+	
+	    // ── Account dropdown ──────────────────────────────────────────────
+	    function toggleAccountMenu(e) {
+	        e.preventDefault();
+	        e.stopPropagation();
+	        const menu = document.getElementById('accountDropdownMenu');
+	        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+	    }
+	    document.addEventListener('click', function() {
+	        const menu = document.getElementById('accountDropdownMenu');
+	        if (menu) menu.style.display = 'none';
+	    });
+	
+	    // ── Open / Close modal ────────────────────────────────────────────
+	    function openChangePasswordModal() {
+		    document.getElementById('accountDropdownMenu').style.display = 'none';
+		    // Lock background scroll
+		    document.body.style.overflow = 'hidden';
+		    document.body.classList.add('modal-open');
+		
+		    // Reset all fields
+		    ['globalCpOld','globalCpNew','globalCpConfirm'].forEach(function(id) {
+		        const el = document.getElementById(id);
+		        el.value = '';
+		        el.style.borderColor = '#e2e8f0';
+		        el.style.boxShadow   = 'none';
+		    });
+		    document.getElementById('globalCpMsg').style.display      = 'none';
+		    document.getElementById('cpMatchMsg').style.display       = 'none';
+		    document.getElementById('cpStrengthBar').style.width      = '0%';
+		    document.getElementById('cpStrengthLabel').textContent    = '';
+		    document.getElementById('cpRulesBox').style.display       = 'none';
+		    Object.keys(CP_RULE_TEXT).forEach(function(id) {
+		        document.getElementById(id).style.color = '#94a3b8';
+		        document.getElementById(id).textContent = '○ ' + CP_RULE_TEXT[id];
+		    });
+		    
+		    document.getElementById('globalChangePwdModal').style.display = 'flex';
+		    // Scroll modal wrapper to top each time it opens
+		    //document.getElementById('globalChangePwdModal').scrollTop = 0;
+		
+		    //const modal = document.getElementById('globalChangePwdModal');
+		    //modal.style.display = 'flex';
+		    // Small delay so flex is applied before animating
+		    //setTimeout(function() {
+		      //  modal.querySelector('div').style.opacity   = '1';
+		      //  modal.querySelector('div').style.transform = 'translateY(0) scale(1)';
+		   // }, 10);
+		}
+		
+		function closeChangePasswordModal() {
+		    document.body.style.overflow = '';
+		    document.body.classList.remove('modal-open');
+		    document.getElementById('globalChangePwdModal').style.display = 'none';
+		}
+	
+	    document.getElementById('globalChangePwdModal').addEventListener('click', function(e) {
+	        if (e.target === this) closeChangePasswordModal();
+	    });
+	
+	    // ── Eye toggle ────────────────────────────────────────────────────
+	    function toggleGlobalPwd(inputId, eyeEl) {
+	        const input = document.getElementById(inputId);
+	        input.type        = input.type === 'password' ? 'text' : 'password';
+	        eyeEl.textContent = input.type === 'password' ? '👁' : '🙈';
+	    }
+	
+	    // ── Password rule definitions ─────────────────────────────────────
+	    const CP_RULES = {
+	        'rule-len'  : function(v) { return v.length >= 8; },
+	        'rule-upper': function(v) { return /[A-Z]/.test(v); },
+	        'rule-lower': function(v) { return /[a-z]/.test(v); },
+	        'rule-num'  : function(v) { return /[0-9]/.test(v); },
+	        'rule-sym'  : function(v) { return /[@#$%^&+=_!]/.test(v); }
+	    };
+	
+	    const CP_RULE_TEXT = {
+	        'rule-len'  : '8+ characters',
+	        'rule-upper': 'Uppercase (A-Z)',
+	        'rule-lower': 'Lowercase (a-z)',
+	        'rule-num'  : 'Number (0-9)',
+	        'rule-sym'  : 'Special character (@#$%^&+=_!)'
+	    };
+	
+	    function isPasswordValid(val) {
+	        return Object.values(CP_RULES).every(function(fn) { return fn(val); });
+	    }
+	
+	    // ── Live new-password validation ──────────────────────────────────
+	    function validateCpNew() {
+	        const val   = document.getElementById('globalCpNew').value;
+	        const input = document.getElementById('globalCpNew');
+	        const box   = document.getElementById('cpRulesBox');
+	
+	        // Show rules box as soon as user starts typing
+	        box.style.display = val.length > 0 ? 'block' : 'none';
+	
+	        let passed = 0;
+	        Object.keys(CP_RULES).forEach(function(id) {
+	            const ok = CP_RULES[id](val);
+	            const el = document.getElementById(id);
+	            if (ok) {
+	                el.style.color   = '#16a34a';
+	                el.textContent   = '✔ ' + CP_RULE_TEXT[id];
+	                passed++;
+	            } else {
+	                el.style.color   = val.length > 0 ? '#ef4444' : '#94a3b8';
+	                el.textContent   = (val.length > 0 ? '✘ ' : '○ ') + CP_RULE_TEXT[id];
+	            }
+	        });
+	
+	        // Strength bar
+	        const bar   = document.getElementById('cpStrengthBar');
+	        const label = document.getElementById('cpStrengthLabel');
+	        const pct   = val.length === 0 ? 0 : (passed / 5) * 100;
+	        bar.style.width = pct + '%';
+	
+	        if (val.length === 0) {
+	            label.textContent = '';
+	        } else if (passed <= 1) {
+	            bar.style.background = '#ef4444'; label.style.color = '#ef4444'; label.textContent = 'Very weak';
+	        } else if (passed === 2) {
+	            bar.style.background = '#f97316'; label.style.color = '#f97316'; label.textContent = 'Weak';
+	        } else if (passed === 3) {
+	            bar.style.background = '#eab308'; label.style.color = '#eab308'; label.textContent = 'Fair';
+	        } else if (passed === 4) {
+	            bar.style.background = '#84cc16'; label.style.color = '#84cc16'; label.textContent = 'Good';
+	        } else {
+	            bar.style.background = '#16a34a'; label.style.color = '#16a34a'; label.textContent = 'Strong ✔';
+	        }
+	
+	        // Border colour
+	        if (val.length === 0)    input.style.borderColor = '#e2e8f0';
+	        else if (passed === 5)   input.style.borderColor = '#16a34a';
+	        else                     input.style.borderColor = '#ef4444';
+	
+	        // Re-check confirm field if already filled
+	        if (document.getElementById('globalCpConfirm').value.length > 0) validateCpMatch();
+	    }
+	
+	    // ── Live confirm-password match ───────────────────────────────────
+	    function validateCpMatch() {
+	        const newVal  = document.getElementById('globalCpNew').value;
+	        const confVal = document.getElementById('globalCpConfirm').value;
+	        const input   = document.getElementById('globalCpConfirm');
+	        const msg     = document.getElementById('cpMatchMsg');
+	
+	        if (confVal.length === 0) {
+	            msg.style.display       = 'none';
+	            input.style.borderColor = '#e2e8f0';
+	            return;
+	        }
+	        if (newVal === confVal) {
+	            msg.style.display       = 'block';
+	            msg.style.color         = '#16a34a';
+	            msg.textContent         = '✔ Passwords match';
+	            input.style.borderColor = '#16a34a';
+	        } else {
+	            msg.style.display       = 'block';
+	            msg.style.color         = '#ef4444';
+	            msg.textContent         = '✘ Passwords do not match';
+	            input.style.borderColor = '#ef4444';
+	        }
+	    }
+	
+	    function clearCpMsg() {
+	        document.getElementById('globalCpMsg').style.display = 'none';
+	    }
+	
+	    // ── Submit ────────────────────────────────────────────────────────
+	    async function submitGlobalChangePassword() {
+	        const oldPwd     = document.getElementById('globalCpOld').value.trim();
+	        const newPwd     = document.getElementById('globalCpNew').value;
+	        const confirmPwd = document.getElementById('globalCpConfirm').value;
+	        const msgEl      = document.getElementById('globalCpMsg');
+	
+	        function showMsg(text, isError) {
+	            msgEl.textContent      = text;
+	            msgEl.style.background = isError ? '#fee2e2' : '#dcfce7';
+	            msgEl.style.color      = isError ? '#dc2626' : '#16a34a';
+	            msgEl.style.border     = isError ? '1px solid #fca5a5' : '1px solid #86efac';
+	            msgEl.style.display    = 'block';
+	        }
+	
+	        // ── Client-side checks ────────────────────────────────────────
+	        if (!oldPwd) {
+	            document.getElementById('globalCpOld').style.borderColor = '#ef4444';
+	            document.getElementById('globalCpOld').focus();
+	            showMsg('❌ Current password is required.', true);
+	            return;
+	        }
+	        if (!newPwd) {
+	            document.getElementById('globalCpNew').style.borderColor = '#ef4444';
+	            showMsg('❌ Please enter a new password.', true);
+	            return;
+	        }
+	        if (!isPasswordValid(newPwd)) {
+	            document.getElementById('globalCpNew').style.borderColor = '#ef4444';
+	            document.getElementById('cpRulesBox').style.display = 'block';
+	            showMsg('❌ New password does not meet all the requirements. Please check the rules.', true);
+	            return;
+	        }
+	        if (newPwd !== confirmPwd) {
+	            document.getElementById('globalCpConfirm').style.borderColor = '#ef4444';
+	            showMsg('❌ Passwords do not match. Please confirm your new password.', true);
+	            return;
+	        }
+	        if (oldPwd === newPwd) {
+	            document.getElementById('globalCpNew').style.borderColor = '#ef4444';
+	            showMsg('❌ New password must be different from your current password.', true);
+	            return;
+	        }
+	
+	        // ── Call API ──────────────────────────────────────────────────
+	        try {
+	            const res  = await fetch('/api/users/change-password-authenticated', {
+	                method: 'POST',
+	                headers: { 'Content-Type': 'application/json' },
+	                body: JSON.stringify({ oldPassword: oldPwd, newPassword: newPwd })
+	            });
+	            const data = await res.json();
+	
+	            if (res.ok) {
+	                showMsg('✅ ' + data.message, false);
+	                // Clear everything on success
+	                ['globalCpOld','globalCpNew','globalCpConfirm'].forEach(function(id) {
+	                    document.getElementById(id).value = '';
+	                    document.getElementById(id).style.borderColor = '#e2e8f0';
+	                });
+	                document.getElementById('cpMatchMsg').style.display    = 'none';
+	                document.getElementById('cpStrengthBar').style.width   = '0%';
+	                document.getElementById('cpStrengthLabel').textContent = '';
+	                document.getElementById('cpRulesBox').style.display    = 'none';
+	                Object.keys(CP_RULE_TEXT).forEach(function(id) {
+	                    document.getElementById(id).style.color = '#94a3b8';
+	                    document.getElementById(id).textContent = '○ ' + CP_RULE_TEXT[id];
+	                });
+	            } else {
+	                // Wrong old password from server
+	                showMsg('❌ ' + data.message, true);
+	                document.getElementById('globalCpOld').style.borderColor = '#ef4444';
+	                document.getElementById('globalCpOld').value = '';
+	                document.getElementById('globalCpOld').focus();
+	            }
+	        } catch (err) {
+	            showMsg('❌ Request failed. Please try again.', true);
+	        }
+	    }
+	</script>
+</header>
