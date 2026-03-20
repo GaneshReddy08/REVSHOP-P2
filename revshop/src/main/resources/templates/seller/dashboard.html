@@ -664,9 +664,12 @@
     }
 
     async function viewOrderDetails(orderId) {
-        try {
+    	try {
             const res = await fetch('/api/orders/' + orderId);
-            if (!res.ok) throw new Error('Order not found');
+            const contentType = res.headers.get('content-type') || '';
+            if (!res.ok || !contentType.includes('application/json')) {
+                throw new Error('Session may have expired. Please refresh the page and try again.');
+            }
             const order = await res.json();
 
             document.getElementById('detailOrderId').textContent    = '#' + order.orderId;

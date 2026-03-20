@@ -71,6 +71,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/cart/**").hasRole("BUYER")
                 .requestMatchers(HttpMethod.POST, "/api/orders/place").hasRole("BUYER")
                 .requestMatchers(HttpMethod.GET, "/api/orders/user/**").hasRole("BUYER")
+                .requestMatchers(HttpMethod.GET, "/api/orders/**").hasAnyRole("BUYER", "SELLER")
                 .requestMatchers(HttpMethod.POST, "/api/reviews/**").hasRole("BUYER")
 
                 // 4. SELLER Permissions
